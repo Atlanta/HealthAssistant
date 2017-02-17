@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Health Assistant</string>
+    <string name="action_settings">Options</string>
+    <string name="action_sign_in_short">Se connecter</string>
+    <string name="action_sign_in">S\'enregistrer</string>
+    <string name="error_field_required">Champ obligatoire</string>
+    <string name="error_incorrect_password">Mot de passe incorrect</string>
+    <string name="error_incorrect_user">Cet utilisateur n\'existe pas</string>
+    <string name="error_invalid_email">Adresse e-mail invalide</string>
+    <string name="error_invalid_password">Mot de passe trop court</string>
+    <string name="navigation_drawer_close">Fermer le menu</string>
+    <string name="navigation_drawer_open">Ouvrir le menu</string>
+    <string name="prompt_email"></string>
+    <string name="prompt_password">Mot de passe</string>
+    <string name="title_activity_main">Profile</string>
+    <string name="action_sign_out">Déconnexion</string>
+</resources>
