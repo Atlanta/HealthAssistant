@@ -3,7 +3,15 @@ package fr.univ_reims.julien.healthassistant;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.Locale;
 
 /**
  * Created by Julien on 12/02/2017.
@@ -11,27 +19,57 @@ import java.util.Date;
 
 public class User implements Parcelable {
     private int id;
-    private String firstName;
-    private String lastName;
     private String login;
     private String email;
-    private Date birthday;
+    private String firstName;
+    private String lastName;
+    private Calendar birthday;
 
-    public User(int id, String firstName, String lastName, String login, String email, Date birthday) {
+    public User(int id, String login, String email, String firstName, String lastName, String birthday) {
         this.id = id;
-        this.firstName = firstName;
-        this.lastName = lastName;
         this.login = login;
         this.email = email;
-        this.birthday = birthday;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.birthday = Calendar.getInstance();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
+        try {
+            this.birthday.setTime(sdf.parse(birthday));
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public User(JSONObject o) {
+        try {
+            this.id = o.getInt("id");
+            this.login = o.getString("login");
+            this.email = o.getString("email");
+            this.firstName = o.getString("firstName");
+            this.lastName = o.getString("lastName");
+            this.birthday = Calendar.getInstance();
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
+            this.birthday.setTime(sdf.parse(o.getString("birthday")));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
     }
 
     protected User(Parcel in) {
         id = in.readInt();
-        firstName = in.readString();
-        lastName = in.readString();
         login = in.readString();
         email = in.readString();
+        firstName = in.readString();
+        lastName = in.readString();
+        birthday = Calendar.getInstance();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
+        try {
+            birthday.setTime(sdf.parse(in.readString()));
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
     }
 
     public static final Creator<User> CREATOR = new Creator<User>() {
@@ -54,11 +92,11 @@ public class User implements Parcelable {
         this.id = id;
     }
 
-    public Date getBirthday() {
+    public Calendar getBirthday() {
         return birthday;
     }
 
-    public void setBirthday(Date birthday) {
+    public void setBirthday(Calendar birthday) {
         this.birthday = birthday;
     }
 
@@ -101,10 +139,13 @@ public class User implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
+
         dest.writeInt(id);
-        dest.writeString(firstName);
-        dest.writeString(lastName);
         dest.writeString(login);
         dest.writeString(email);
+        dest.writeString(firstName);
+        dest.writeString(lastName);
+        dest.writeString(sdf.format(birthday.getTime()));
     }
 }

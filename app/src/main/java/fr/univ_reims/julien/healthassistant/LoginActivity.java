@@ -3,11 +3,13 @@ package fr.univ_reims.julien.healthassistant;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.database.sqlite.SQLiteDatabase;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AlertDialog;
@@ -36,12 +38,15 @@ import android.widget.TextView;
 
 import org.json.*;
 
-import java.io.Serializable;
-import java.util.Date;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import static android.Manifest.permission.READ_CONTACTS;
+
+import fr.univ_reims.julien.healthassistant.HealthAppContract.HealthAppEntry;
 
 /**
  * A login screen that offers login via email/password.
@@ -64,20 +69,17 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     private View mProgressView;
     private View mLoginFormView;
 
+    private Context context;
+
+
+    //private HealthAppDbHelper mDbHelper;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        SharedPreferences sharedPref = LoginActivity.this.getPreferences(Context.MODE_PRIVATE);
-        boolean isUserLogged = sharedPref.getBoolean(getString(R.string.is_logged), false);
-
-        // TODO: Implements users data in SQL database
-        /*if(isUserLogged) {
-            Intent I = new Intent(LoginActivity.this, MainActivity.class);
-            I.putExtra("user", u);
-            startActivity(I);
-        }*/
+        this.context = getApplicationContext();
 
         // Set up the login form.
         mEmailView = (AutoCompleteTextView) findViewById(R.id.email);
@@ -107,6 +109,73 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         mProgressView = findViewById(R.id.login_progress);
     }
 
+    public Context getContext() {
+        return this.context;
+    }
+
+    protected void onStart() {
+        super.onStart();
+
+        SharedPreferences sharedPref = LoginActivity.this.getSharedPreferences(getString(R.string.shared_preferences_healthapp), Context.MODE_PRIVATE);
+
+        if(sharedPref.getInt(getString(R.string.last_login_id), -1) != -1) {
+
+            HealthAppDbHelper mDbHelper = new HealthAppDbHelper(getContext());
+            // Gets the data repository in read mode
+            SQLiteDatabase db = mDbHelper.getReadableDatabase();
+
+            String[] projection = {
+                    HealthAppEntry._ID,
+                    HealthAppEntry.COLUMN_LOGIN,
+                    HealthAppEntry.COLUMN_EMAIL,
+                    HealthAppEntry.COLUMN_FIRST_NAME,
+                    HealthAppEntry.COLUMN_LAST_NAME,
+                    HealthAppEntry.COLUMN_BIRTHDAY,
+                    HealthAppEntry.COLUMN_TOKEN_VALIDITY
+            };
+
+            // Filter results WHERE "title" = 'My Title'
+            String selection = HealthAppEntry._ID + " = ?";
+            String[] selectionArgs = {String.valueOf(sharedPref.getInt(getString(R.string.last_login_id), -1))};
+
+            // How you want the results sorted in the resulting Cursor
+            String sortOrder =
+                    HealthAppEntry._ID + " DESC";
+
+            Cursor cursor = db.query(
+                    HealthAppEntry.TABLE_NAME,                     // The table to query
+                    projection,                               // The columns to return
+                    selection,                                // The columns for the WHERE clause
+                    selectionArgs,                            // The values for the WHERE clause
+                    null,                                     // don't group the rows
+                    null,                                     // don't filter by row groups
+                    sortOrder                                 // The sort order
+            );
+
+            User u = null;
+
+            while (cursor.moveToNext()) {
+                if (System.currentTimeMillis() > cursor.getLong(cursor.getColumnIndexOrThrow(HealthAppEntry.COLUMN_TOKEN_VALIDITY))) {
+                    u = new User(
+                            cursor.getInt(cursor.getColumnIndexOrThrow(HealthAppEntry._ID)),
+                            cursor.getString(cursor.getColumnIndexOrThrow(HealthAppEntry.COLUMN_LOGIN)),
+                            cursor.getString(cursor.getColumnIndexOrThrow(HealthAppEntry.COLUMN_EMAIL)),
+                            cursor.getString(cursor.getColumnIndexOrThrow(HealthAppEntry.COLUMN_FIRST_NAME)),
+                            cursor.getString(cursor.getColumnIndexOrThrow(HealthAppEntry.COLUMN_LAST_NAME)),
+                            cursor.getString(cursor.getColumnIndexOrThrow(HealthAppEntry.COLUMN_BIRTHDAY))
+                    );
+                }
+            }
+            cursor.close();
+
+            if (u != null) {
+                Intent I = new Intent(LoginActivity.this, MainActivity.class);
+                I.putExtra("user", u);
+                startActivity(I);
+            }
+        }
+    }
+
     private void populateAutoComplete() {
         if (!mayRequestContacts()) {
             return;
@@ -114,6 +183,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
         getLoaderManager().initLoader(0, null, this);
     }
+
+    //region Contacts request functions
 
     private boolean mayRequestContacts() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
@@ -150,6 +221,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         }
     }
 
+
+    //endregion
 
     /**
      * Attempts to sign in or register the account specified by the login form.
@@ -205,8 +278,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
     private boolean isEmailValid(String email) {
         //TODO: Replace this with your own logic
-        //return email.contains("@");
-        return true;
+        return email.length() >= 3;
     }
 
     private boolean isPasswordValid(String password) {
@@ -217,6 +289,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     /**
      * Shows the progress UI and hides the login form.
      */
+
+    //region UI functions
     @TargetApi(Build.VERSION_CODES.HONEYCOMB_MR2)
     private void showProgress(final boolean show) {
         // On Honeycomb MR2 we have the ViewPropertyAnimator APIs, which allow
@@ -295,14 +369,17 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
 
     private interface ProfileQuery {
+        // TODO: Delete profile query
         String[] PROJECTION = {
                 ContactsContract.CommonDataKinds.Email.ADDRESS,
                 ContactsContract.CommonDataKinds.Email.IS_PRIMARY,
         };
 
         int ADDRESS = 0;
-        int IS_PRIMARY = 1;
+        //int IS_PRIMARY = 1;
     }
+
+    //endregion
 
     /**
      * Represents an asynchronous login/registration task used to authenticate
@@ -323,16 +400,12 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         @Override
         protected Boolean doInBackground(Void... params) {
             try {
+
                 // ApiHttpHandle.login(this.response, mEmail, mPassword);
                 ApiLoginRequest loginRequest = new ApiLoginRequest(mEmail, mPassword);
                 loginResponse = loginRequest.sendRequest();
 
-                if(loginResponse != null && loginResponse.getStatusCode() == 200) {
-                    return true;
-                }
-                else {
-                    return false;
-                }
+                return loginResponse != null && loginResponse.getStatusCode() == 200;
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -348,24 +421,45 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
             if (success) {
                 User u = null;
-                JSONObject jsonResponse = null;
+                ContentValues values = null;
+                JSONObject jsonResponse;
+
                 try {
                     jsonResponse = new JSONObject(loginResponse.getResponseBody());
-                    u = new User(jsonResponse.getInt("id"), jsonResponse.getString("firstName"), jsonResponse.getString("lastName"), jsonResponse.getString("login"), jsonResponse.getString("email"), null);
+                    u = new User(jsonResponse);
+
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
+
+                    // Create a new map of values, where column names are the keys
+                    values = new ContentValues();
+                    // values.put(HealthAppEntry._ID, u.getId());
+                    values.put(HealthAppEntry.COLUMN_LOGIN, u.getLogin());
+                    values.put(HealthAppEntry.COLUMN_EMAIL, u.getEmail());
+                    values.put(HealthAppEntry.COLUMN_FIRST_NAME, u.getFirstName());
+                    values.put(HealthAppEntry.COLUMN_LAST_NAME, u.getLastName());
+                    values.put(HealthAppEntry.COLUMN_BIRTHDAY, sdf.format(u.getBirthday().getTime()));
+                    values.put(HealthAppEntry.COLUMN_TOKEN_VALIDITY, String.valueOf(new Timestamp(System.currentTimeMillis() + 604800000L)));
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
 
-                SharedPreferences sharedPref = LoginActivity.this.getPreferences(Context.MODE_PRIVATE);
-                SharedPreferences.Editor editor = sharedPref.edit();
-                editor.putBoolean(getString(R.string.is_logged), true);
-                editor.commit();
+                // Gets the data repository in write mode
+                HealthAppDbHelper mDbHelper = new HealthAppDbHelper(getContext());
+                SQLiteDatabase db = mDbHelper.getWritableDatabase();
 
+                // Insert the new row, returning the primary key value of the new row
+                long newRowId = db.insert(HealthAppEntry.TABLE_NAME, null, values);
+
+                // Write the id of the new row into shared preferences
+                SharedPreferences sharedPref = LoginActivity.this.getSharedPreferences(getString(R.string.shared_preferences_healthapp), Context.MODE_PRIVATE);
+                sharedPref.edit().putInt(getString(R.string.last_login_id), (int)newRowId).apply();
+
+                // Passing the user to the MainActivity
                 Intent I = new Intent(LoginActivity.this, MainActivity.class);
                 I.putExtra("user", u);
                 startActivity(I);
             } else {
-                View focusView = null;
+                View focusView;
 
                 if(loginResponse.getStatusCode() == 400) {
                     mEmailView.setError(getString(R.string.error_incorrect_user));
@@ -400,6 +494,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             mAuthTask = null;
             showProgress(false);
         }
+
+
     }
 }
 

@@ -43,7 +43,7 @@
             android:textStyle="normal|bold" />
 
         <TextView
-            android:text="12/05/1995 (21 ans)"
+            android:text="01/01/1970 (0 ans)"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:id="@+id/user_birthday"

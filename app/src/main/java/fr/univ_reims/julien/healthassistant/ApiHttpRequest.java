@@ -17,7 +17,7 @@ import java.net.URL;
  */
 
 public abstract class ApiHttpRequest {
-    public static final String API_URL = "http://10.0.3.2/";
+    public static final String API_URL = "http://46.101.155.73/julien/HealthApp/";
     protected String requestUrlExtension;
     protected String urlParameters;
 
@@ -96,80 +96,6 @@ public abstract class ApiHttpRequest {
         response.setResponseBody(responseBuffer.toString());
 
         return response;
-
-        /*URL url = null;
-        HttpURLConnection connection = null;
-        BufferedReader in = null;
-        String inputLine;
-        StringBuffer responseBuffer = new StringBuffer();
-        ApiHttpResponse response = null;
-
-        url = new URL(API_URL + apiUrlExtension);
-
-        connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestMethod("POST");
-        connection.setDoOutput(true);
-
-        DataOutputStream out = new DataOutputStream(connection.getOutputStream());
-        out.writeBytes(urlParameters);
-        out.flush();
-        out.close();
-
-        in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-
-        while ((inputLine = in.readLine()) != null) {
-            responseBuffer.append(inputLine);
-        }
-
-        in.close();
-
-        response = new ApiHttpResponse(connection.getResponseCode(), responseBuffer.toString());
-
-        return response;*/
     }
 
-    /*public static void login(ApiRequestResponse response, String login, String password) throws Exception {
-        URL url = new URL(API_URL + "login");
-
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestMethod("POST");
-        String urlParameters = "login=" + login + "&password=" + new String(Hex.encodeHex(DigestUtils.sha1(password)));
-
-        connection.setDoOutput(true);
-        try (DataOutputStream out = new DataOutputStream(connection.getOutputStream())) {
-            out.writeBytes(urlParameters);
-            out.flush();
-            out.close();
-        }
-        catch (ConnectException e) {
-            e.printStackTrace();
-            response.setReturnCode(400);
-            response.setReturnMessage("Can't access server");
-        }
-
-        response.setReturnCode(connection.getResponseCode());
-
-        if(response.getReturnCode() == 200) {
-            BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-            String inputLine;
-            StringBuffer responseBuffer = new StringBuffer();
-
-            while ((inputLine = in.readLine()) != null) {
-                responseBuffer.append(inputLine);
-            }
-
-            in.close();
-
-            if (responseBuffer.equals("error")) {
-            }
-
-            response.setReturnMessage(responseBuffer.toString());
-        }
-        else if(response.getReturnCode() == 400) {
-            response.setReturnMessage("Wrong credidentials");
-        }
-        else {
-            response.setReturnMessage("Erreur serveur");
-        }
-    }*/
 }

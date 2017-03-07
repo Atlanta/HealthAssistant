@@ -1,9 +1,10 @@
 package fr.univ_reims.julien.healthassistant;
 
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.view.View;
@@ -17,10 +18,15 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Locale;
+
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
     private User user;
+    private Context context;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,6 +34,8 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        this.context = getApplicationContext();
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -41,7 +49,7 @@ public class MainActivity extends AppCompatActivity
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
-        drawer.setDrawerListener(toggle);
+        drawer.addDrawerListener(toggle);
         toggle.syncState();
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
@@ -51,6 +59,11 @@ public class MainActivity extends AppCompatActivity
 
         TextView mUserName = (TextView) findViewById(R.id.user_name);
         mUserName.setText(user.getLastName() + " " + user.getFirstName().toUpperCase());
+
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.ENGLISH);
+
+        TextView mUserBirthday = (TextView) findViewById(R.id.user_birthday);
+        mUserBirthday.setText(sdf.format(user.getBirthday().getTime()) + " (" + calculateAge(user.getBirthday()) + " ans)");
     }
 
     @Override
@@ -89,6 +102,22 @@ public class MainActivity extends AppCompatActivity
         if (id == R.id.action_settings) {
             return true;
         } else if (id== R.id.action_logout) {
+            SharedPreferences sharedPref = MainActivity.this.getSharedPreferences(getString(R.string.shared_preferences_healthapp), Context.MODE_PRIVATE);
+
+            HealthAppDbHelper mDbHelper = new HealthAppDbHelper(getContext());
+            SQLiteDatabase db = mDbHelper.getWritableDatabase();
+
+            // Define 'where' part of query.
+            String selection = HealthAppContract.HealthAppEntry._ID + " LIKE ?";
+            // Specify arguments in placeholder order.
+            String[] selectionArgs = { String.valueOf(sharedPref.getInt(getString(R.string.last_login_id), -1)) };
+            // Issue SQL statement.
+            db.delete(HealthAppContract.HealthAppEntry.TABLE_NAME, selection, selectionArgs);
+
+            // Delete last login id
+            sharedPref.edit().clear().apply();
+
+            mDbHelper.close();
             this.finish();
         }
 
@@ -97,7 +126,7 @@ public class MainActivity extends AppCompatActivity
 
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
-    public boolean onNavigationItemSelected(MenuItem item) {
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         // Handle navigation view item clicks here.
         int id = item.getItemId();
 
@@ -119,4 +148,17 @@ public class MainActivity extends AppCompatActivity
         drawer.closeDrawer(GravityCompat.START);
         return true;
     }
+
+    public Context getContext() {
+        return this.context;
+    }
+
+    private int calculateAge(Calendar birthday) {
+        Calendar now = Calendar.getInstance();
+        int res = now.get(Calendar.YEAR) - birthday.get(Calendar.YEAR);
+        if ((birthday.get(Calendar.MONTH) > now.get(Calendar.MONTH)) || (birthday.get(Calendar.MONTH) == now.get(Calendar.MONTH) && birthday.get(Calendar.DAY_OF_MONTH) > now.get(Calendar.DAY_OF_MONTH)))
+            res--;
+        return res;
+    }
+
 }
